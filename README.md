@@ -62,22 +62,37 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 ## Installation & Setup
 
+### Direktinstallation via uv
 Das einfachste ist, dvm direkt als Tool mit `uv` zu installieren:
 
 ```bash 
 uv tool install git+https://github.com/piitschy/dvm
 ```
 
+Anschließend sicherstellen, dass `dvm` mit sudo ausführbar ist:
+
+```bash
+sudo ln -s "$(which dvm)" /usr/local/bin/dvm
+```
+
+Danach kannst du `dvm` so nutzen:
+
+```bash
+dvm --help
+```
+
 Alternativ kannst du das Repo klonen und `dvm` direkt aus dem Quellcode ausführen:
 
-### 1. Repository klonen
+### Installation aus dem Quellcode
+
+#### 1. Repository klonen
 
 ```bash
 git clone https://github.com/Piitschy/dvm
 cd dvm
 ```
 
-### 2. CLI mit `uv` ausführen (ohne Installation)
+#### 2. CLI mit `uv` ausführen (ohne Installation)
 
 Im Projektverzeichnis:
 
@@ -91,7 +106,7 @@ Damit:
 * installiert `click`
 * startet den Script-Entry `dvm = main:cli`
 
-### 3. Optional: Als Tool installieren
+#### 3. Optional: Als Tool installieren
 
 Wenn du `dvm` wie ein globales CLI nutzen willst:
 
