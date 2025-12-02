@@ -73,7 +73,7 @@ Alternativ kannst du das Repo klonen und `dvm` direkt aus dem Quellcode ausführ
 ### 1. Repository klonen
 
 ```bash
-git clone <dein-repo-url> dvm
+git clone https://github.com/Piitschy/dvm
 cd dvm
 ```
 
@@ -393,14 +393,6 @@ uv run mypy main.py
   * Andere Transport-Backends (S3, MinIO, SSH)
 
 ---
-
-## License
-
-*(Noch festzulegen – z. B. MIT oder Apache-2.0.)*
-
-```
-::contentReference[oaicite:12]{index=12}
-```
 
 [1]: https://www.tecmint.com/file-sharing-from-linux-commandline/?utm_source=chatgpt.com "Transfer.sh - Easy File Sharing from Linux Commandline"
 [2]: https://github.com/dutchcoders/transfer.sh?utm_source=chatgpt.com "dutchcoders/transfer.sh: Easy and fast file sharing from the ..."
