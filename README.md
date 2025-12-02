@@ -6,7 +6,8 @@ Der Fokus liegt auf:
 
 - **1:1-Migration** von Volumes (inkl. Besitzer, Gruppen, ACLs, xattrs)
 - **zero setup** dank `transfer.sh` (oder eigenem Endpoint)
-- **sauberer CLI-UX** via [Click]:contentReference[oaicite:1]{index=1} und [uv]:contentReference[oaicite:2]{index=2}
+- **sauberer CLI-UX** via [Click](https://click.palletsprojects.com/) mit klarer Trennung von Logs (STDERR) und Ergebnis-Output (STDOUT)
+- **Konfigurierbarkeit** via `~/.dvm/config.toml` und CLI-Overrides
 
 ---
 
