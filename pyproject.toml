@@ -1,0 +1,24 @@
+[project]
+name = "dvm"
+version = "0.1.0"
+description = "CLI zum Migrieren von Docker-Volumes via transfer.sh"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "click>=8.3.1",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "mypy>=1.19.0",
+]
+
+[project.scripts]
+dvm = "main:cli"
+
+[tool.hatch.build.targets.wheel]
+only-include = ["main.py"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
