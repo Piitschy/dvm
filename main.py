@@ -3,6 +3,7 @@ import os
 import sys
 import tempfile
 import subprocess
+import shutil
 from typing import Optional, TypedDict, Any, IO
 import urllib.request
 from urllib.error import URLError, HTTPError
@@ -22,6 +23,7 @@ CONFIG_PATH = CONFIG_DIR / "config.toml"
 # Hilfsfunktionen: Rechte, tar, HTTP
 # ---------------------------------------------------------------------------
 
+
 def echo(
     message: str,
     file: Optional[IO[Any]] = None,
@@ -37,8 +39,10 @@ def echo(
         color=color,
     )
 
-def stdout(message: str, **kwargs) -> None:
+
+def stdout(message: str, **kwargs: Any) -> None:
     echo(message, err=False, **kwargs)
+
 
 def ensure_root():
     if os.geteuid() != 0:
@@ -175,9 +179,11 @@ def download_file(url: str, dest_path: str) -> None:
 # Config-Handling (~/.dvm/config.toml)
 # ---------------------------------------------------------------------------
 
+
 class Config(TypedDict):
     docker_root: str
     endpoint: str
+
 
 def load_config() -> Config:
     """
@@ -190,8 +196,8 @@ def load_config() -> Config:
         endpoint = "https://transfer.sh"
     """
     cfg = Config(
-        docker_root= DEFAULT_DOCKER_ROOT,
-        endpoint= DEFAULT_TRANSFERSH,
+        docker_root=DEFAULT_DOCKER_ROOT,
+        endpoint=DEFAULT_TRANSFERSH,
     )
 
     if not CONFIG_PATH.is_file():
@@ -219,7 +225,7 @@ def load_config() -> Config:
     return cfg
 
 
-def save_config(cfg:Config) -> None:
+def save_config(cfg: Config) -> None:
     """
     Speichert Konfiguration nach ~/.dvm/config.toml (einfaches TOML-Write).
     """
@@ -357,7 +363,6 @@ def backup(
 
     volumes_dir = os.path.join(docker_root, "volumes")
 
-    # Volumenamen bestimmen
     volume_names: list[str] = list(volumes)
 
     if all_volumes:
@@ -391,10 +396,8 @@ def backup(
     with tempfile.TemporaryDirectory() as tmpdir:
         tar_path = os.path.join(tmpdir, "docker-volumes.tar")
 
-        # Tar erstellen
         run_tar_create(tar_path, volumes_dir, volume_names)
 
-        # Auf transfer.sh hochladen
         archive_name = name or "docker-volumes.tar"
         url = upload_to_transfersh(tar_path, endpoint, archive_name, max_days=max_days)
 
@@ -411,7 +414,20 @@ def backup(
     help="Docker Root-Verzeichnis (override Konfiguration).",
     show_default=False,
 )
-def restore(url:str, docker_root: Optional[str]) -> None:
+@click.option(
+    "--replace",
+    "-r",
+    "replacements",
+    multiple=True,
+    help="String-Ersetzung für Volume-Namen, z. B. 'alt=neu'. Mehrfach möglich.",
+)
+@click.option(
+    "--force",
+    "-f",
+    is_flag=True,
+    help="Vorhandene Volume-Verzeichnisse überschreiben ohne Nachfrage.",
+)
+def restore(url: str, docker_root: Optional[str], replacements: str|list[str]) -> None:
     """
     Tar-Archiv von transfer.sh herunterladen und Volumes wiederherstellen.
 
@@ -420,7 +436,8 @@ def restore(url:str, docker_root: Optional[str]) -> None:
     ensure_root()
 
     cfg = load_config()
-    docker_root = docker_root or cfg["docker_root"]
+    if docker_root is None:
+        docker_root = cfg["docker_root"]
 
     volumes_dir = os.path.join(docker_root, "volumes")
     if not os.path.isdir(volumes_dir):
@@ -428,20 +445,62 @@ def restore(url:str, docker_root: Optional[str]) -> None:
             f"Volumes-Verzeichnis existiert nicht: {volumes_dir}"
         )
 
+    # Replacements parsen: "alt=neu"
+    replace_pairs: list[tuple[str, str]] = []
+    for spec in list(replacements):
+        if "=" not in spec:
+            raise click.ClickException(
+                f"Ungültiges --replace-Argument '{spec}', erwartet Form 'alt=neu'."
+            )
+        old, new = spec.split("=", 1)
+        if not old:
+            raise click.ClickException(
+                f"Ungültiges --replace-Argument '{spec}', linker Teil darf nicht leer sein."
+            )
+        replace_pairs.append((old, new))
+
     with tempfile.TemporaryDirectory() as tmpdir:
         tar_path = os.path.join(tmpdir, "docker-volumes.tar")
 
-        # Download
         download_file(url, tar_path)
 
-        # Entpacken an die richtige Stelle
-        run_tar_extract(tar_path, volumes_dir)
+        if not replace_pairs:
+            run_tar_extract(tar_path, volumes_dir)
+        else:
+            extract_dir = os.path.join(tmpdir, "extract")
+            os.mkdir(extract_dir)
+
+            run_tar_extract(tar_path, extract_dir)
+
+            for name in os.listdir(extract_dir):
+                src = os.path.join(extract_dir, name)
+                if not os.path.isdir(src):
+                    continue
+
+                new_name = name
+                for old, new in replace_pairs:
+                    new_name = new_name.replace(old, new)
+
+                dst = os.path.join(volumes_dir, new_name)
+
+                if os.path.exists(dst):
+                    echo(
+                        f"Warnung: Ziel-Volume-Verzeichnis existiert bereits: {dst}",
+                    )
+                    if not click.confirm("Überschreiben?", default=False):
+                        echo(f"Überspringe Volume '{name}'.")
+                        continue
+                    echo(f"Überschreibe vorhandenes Volume-Verzeichnis '{dst}'.")
+
+                echo(
+                    f"Volume-Verzeichnis '{name}' -> '{new_name}'",
+                )
+                shutil.move(src, dst)
 
         echo("\nFERTIG ✅")
         echo(
             f"Volumes wurden unter {volumes_dir} wiederhergestellt.\n"
-            "Docker neu starten und Container mit den gleichen Volume-Namen "
-            "wie vorher starten."
+            "Docker neu starten und Container mit den passenden Volume-Namen wie konfiguriert starten.",
         )
 
 
