@@ -1,58 +1,62 @@
 # dvm – Docker Volume Migrator
 
-`dvm` ist eine kleine Python-CLI, mit der du Docker-Volumes inklusive Rechte & Metadaten sichern, über einen konfigurierbaren [transfer.sh](https://github.com/dutchcoders/transfer.sh)-kompatiblen Endpoint hochladen und auf einem anderen Host wiederherstellen kannst. :contentReference[oaicite:0]{index=0}  
+`dvm` is a small Python CLI that lets you back up Docker volumes including permissions & metadata, upload them to a configurable [transfer.sh](https://github.com/dutchcoders/transfer.sh)-compatible endpoint, and restore them on another host. 
 
-Der Fokus liegt auf:
+The focus is on:
 
-- **1:1-Migration** von Volumes (inkl. Besitzer, Gruppen, ACLs, xattrs)
-- **zero setup** dank `transfer.sh` (oder eigenem Endpoint)
-- **sauberer CLI-UX** via [Click](https://click.palletsprojects.com/) mit klarer Trennung von Logs (STDERR) und Ergebnis-Output (STDOUT)
-- **Konfigurierbarkeit** via `~/.dvm/config.toml` und CLI-Overrides
+* **1:1 migration** of volumes (incl. owners, groups, ACLs, xattrs)
+* **zero setup** thanks to `transfer.sh` (or your own endpoint)
+* **clean CLI UX** via [Click](https://click.palletsprojects.com/) with clear separation of logs (STDERR) and result output (STDOUT)
+* **configurability** via `~/.dvm/config.toml` and CLI overrides
 
 ---
 
 ## Features
 
-- `dvm backup`
-  - Sichert ein oder alle Docker-Volumes via `tar` (mit `--xattrs --acls --numeric-owner`)
-  - Lädt das Archiv zu einem `transfer.sh`-kompatiblen Endpoint hoch
-  - Gibt **nur die finale URL auf STDOUT** aus → perfekt für Shell-Pipes und `> url.txt`
-- `dvm restore`
-  - Lädt das Archiv von der URL herunter
-  - Entpackt es unter `<docker_root>/volumes/…`
-- `dvm config`
-  - Interaktiver Wizard
-  - Speichert `docker_root` und `endpoint` in `~/.dvm/config.toml`
-- `dvm show-config`
-  - Zeigt aktuelle Konfiguration und Defaults an
+* `dvm backup`
 
-Standard-Defaults:
+  * Backs up one or all Docker volumes via `tar` (with `--xattrs --acls --numeric-owner`)
+  * Uploads the archive to a `transfer.sh`-compatible endpoint
+  * Prints **only the final URL to STDOUT** → perfect for shell pipes and `> url.txt`
+* `dvm restore`
+
+  * Downloads the archive from the URL
+  * Extracts it under `<docker_root>/volumes/…`
+* `dvm config`
+
+  * Interactive wizard
+  * Stores `docker_root` and `endpoint` in `~/.dvm/config.toml`
+* `dvm show-config`
+
+  * Shows current configuration and defaults
+
+Default settings:
 
 ```toml
 # ~/.dvm/config.toml
 [settings]
 docker_root = "/var/lib/docker"
 endpoint = "https://transfer.sh"
-````
+```
 
-`transfer.sh` ist ein minimaler Filesharing-Dienst für die Kommandozeile, der Dateien typischerweise bis 10 GB akzeptiert und sie standardmäßig 14 Tage vorhält. ([LFCS Zertifizierung eBook][1])
-Über den HTTP-Header `Max-Days` kannst du die Aufbewahrungsdauer für einen Upload einzeln steuern. ([GitHub][2])
+`transfer.sh` is a minimal file sharing service for the command line that typically accepts files up to 10 GB and keeps them for 14 days by default. ([LFCS Certification eBook][1])
+You can control the retention period for individual uploads via the `Max-Days` HTTP header. ([GitHub][2])
 
 ---
 
-## Voraussetzungen
+## Prerequisites
 
-* Linux-Host mit:
+* Linux host with:
 
-  * Docker (inkl. `docker` CLI)
+  * Docker (including the `docker` CLI)
   * `tar`
-* Python ≥ 3.11 (im Projekt ist aktuell `>=3.13` konfiguriert)
-* uv – schneller Python Package/Project Manager
-* Internetzugriff zum gewünschten transfer.sh-Endpoint
+* Python ≥ 3.11 (the project currently targets `>=3.13`)
+* uv – fast Python package/project manager
+* Internet access to the desired transfer.sh endpoint
 
-### uv installieren
+### Install uv
 
-Siehe offizielle Doku: ([docs.astral.sh][3])
+See the official docs: ([docs.astral.sh][3])
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -62,59 +66,60 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 ## Installation & Setup
 
-### Direktinstallation via uv
-Das einfachste ist, dvm direkt als Tool mit `uv` zu installieren:
+### Direct installation via uv
 
-```bash 
+The easiest way is to install dvm directly as a tool with `uv`:
+
+```bash
 uv tool install git+https://github.com/piitschy/dvm
 ```
 
-Anschließend sicherstellen, dass `dvm` mit sudo ausführbar ist:
+Then make sure `dvm` is executable with sudo:
 
 ```bash
 sudo ln -s "$(which dvm)" /usr/local/bin/dvm
 ```
 
-Danach kannst du `dvm` so nutzen:
+After that you can use `dvm` like this:
 
 ```bash
 dvm --help
 ```
 
-Alternativ kannst du das Repo klonen und `dvm` direkt aus dem Quellcode ausführen:
+Alternatively, you can clone the repo and run `dvm` directly from source:
 
-### Installation aus dem Quellcode
+### Installation from source
 
-#### 1. Repository klonen
+#### 1. Clone the repository
 
 ```bash
 git clone https://github.com/Piitschy/dvm
 cd dvm
 ```
 
-#### 2. CLI mit `uv` ausführen (ohne Installation)
+#### 2. Run the CLI with `uv` (without installation)
 
-Im Projektverzeichnis:
+In the project directory:
 
 ```bash
 uv run dvm --help
 ```
 
-Damit:
+This will:
 
-* liest `uv` die `pyproject.toml`
-* installiert `click`
-* startet den Script-Entry `dvm = main:cli`
+* read `pyproject.toml`
+* install `click`
+* start the script entry point `dvm = main:cli`
 
-#### 3. Optional: Als Tool installieren
+#### 3. Optional: Install as a tool
 
-Wenn du `dvm` wie ein globales CLI nutzen willst:
+If you want to use `dvm` like a global CLI:
 
 ```bash
 uv tool install .
 ```
 
-Danach (sofern der `uv`-Tool-Pfad im `PATH` ist):
+After that (assuming the `uv` tool path is in your `PATH`):
 
 ```bash
 dvm --help
@@ -124,30 +129,30 @@ dvm --help
 
 ## `sudo` + `uv`
 
-Da `dvm` in `/var/lib/docker` arbeitet und `docker volume ls` nutzt, solltest du es als root laufen lassen:
+Since `dvm` works in `/var/lib/docker` and uses `docker volume ls`, you should run it as root:
 
 ```bash
 sudo uv run dvm backup …
 ```
 
-Falls `sudo: uv: Befehl nicht gefunden` kommt, liegt `uv` nur in deinem User-PATH. Lösungen:
+If you get `sudo: uv: command not found`, `uv` is probably only in your user `PATH`. Solutions:
 
-**A. Voller Pfad:**
+**A. Full path:**
 
 ```bash
 which uv
-# z.B. /home/jan/.local/bin/uv
+# e.g. /home/jan/.local/bin/uv
 
 sudo /home/jan/.local/bin/uv run dvm backup …
 ```
 
-**B. Symlink nach `/usr/local/bin`:**
+**B. Symlink into `/usr/local/bin`:**
 
 ```bash
 sudo ln -s "$(which uv)" /usr/local/bin/uv
 ```
 
-Danach:
+After that:
 
 ```bash
 sudo uv run dvm backup …
@@ -155,28 +160,28 @@ sudo uv run dvm backup …
 
 ---
 
-## Konfiguration
+## Configuration
 
 ### Wizard: `dvm config`
 
-Starte den interaktiven Wizard:
+Start the interactive wizard:
 
 ```bash
 uv run dvm config
-# oder, für echte Backups:
+# or, for real backups:
 sudo uv run dvm config
 ```
 
-Der Wizard fragt:
+The wizard asks for:
 
-1. **Docker Root-Verzeichnis**
+1. **Docker root directory**
 
    * Default: `/var/lib/docker`
-2. **transfer.sh Endpoint**
+2. **transfer.sh endpoint**
 
    * Default: `https://transfer.sh`
 
-Die Konfiguration wird in `~/.dvm/config.toml` geschrieben:
+The configuration is written to `~/.dvm/config.toml`:
 
 ```toml
 # ~/.dvm/config.toml
@@ -185,17 +190,17 @@ docker_root = "/var/lib/docker"
 endpoint = "https://transfer.sh"
 ```
 
-### Konfiguration ansehen
+### Show configuration
 
 ```bash
 uv run dvm show-config
 ```
 
-Ausgabe z. B.:
+Example output:
 
 ```text
-Konfigurationsdatei: /home/user/.dvm/config.toml
-Status: Datei gefunden ✅
+Configuration file: /home/user/.dvm/config.toml
+Status: File found ✅
 
 Docker Root : /var/lib/docker
 Endpoint    : https://transfer.sh
@@ -205,103 +210,103 @@ Endpoint    : https://transfer.sh
 
 ## Usage
 
-### 1. Container anhalten (empfohlen)
+### 1. Stop containers (recommended)
 
-Um konsistente Volumes zu bekommen:
+To get consistent volumes:
 
 ```bash
 docker compose down
-# oder gezielt:
-docker stop <deine-container>
+# or selectively:
+docker stop <your-containers>
 ```
 
 ---
 
 ### 2. Backup
 
-#### Ein bestimmtes Volume
+#### A specific volume
 
 ```bash
-sudo uv run dvm backup -v mein_volume
+sudo uv run dvm backup -v my_volume
 ```
 
-#### Mehrere Volumes
+#### Multiple volumes
 
 ```bash
 sudo uv run dvm backup -v vol1 -v vol2 -v vol3
 ```
 
-#### Alle Docker-Volumes
+#### All Docker volumes
 
 ```bash
 sudo uv run dvm backup --all-volumes
 ```
 
-#### Optionen
+#### Options
 
-* `-v, --volume NAME` – Name eines Docker-Volumes (mehrfach)
-* `--all-volumes` – alle Volumes aus `docker volume ls`
-* `--docker-root PATH` – überschreibt `docker_root` aus der Config
-* `--endpoint URL` – überschreibt `endpoint` aus der Config
-* `--name NAME` – Dateiname für das Archiv auf dem Endpoint (Default: `docker-volumes.tar`)
-* `--max-days N` – setzt HTTP-Header `Max-Days: N` beim Upload
+* `-v, --volume NAME` – name of a Docker volume (can be given multiple times)
+* `--all-volumes` – all volumes from `docker volume ls`
+* `--docker-root PATH` – overrides `docker_root` from the config
+* `--endpoint URL` – overrides `endpoint` from the config
+* `--name NAME` – filename for the archive on the endpoint (default: `docker-volumes.tar`)
+* `--max-days N` – sets HTTP header `Max-Days: N` for the upload
 
-Unter der Haube:
+Under the hood:
 
-* `docker volume ls --format '{{.Name}}'` zum Auflisten (bei `--all-volumes`)
-* `tar --xattrs --acls --numeric-owner -C <docker_root>/volumes -cpf <tmpfile> <volume-namen>`
-* Upload via `PUT https://transfer.sh/<name>` mit optionalem `Max-Days`-Header ([GitHub][2])
+* `docker volume ls --format '{{.Name}}'` for listing (when using `--all-volumes`)
+* `tar --xattrs --acls --numeric-owner -C <docker_root>/volumes -cpf <tmpfile> <volume-names>`
+* Upload via `PUT https://transfer.sh/<name>` with optional `Max-Days` header ([GitHub][2])
 
 ---
 
-### 3. URL sauber in Datei schreiben
+### 3. Cleanly write the URL to a file
 
-`dvm` ist so gebaut, dass:
+`dvm` is designed such that:
 
-* **alle Logs** und Statusmeldungen auf **STDERR** ausgegeben werden
-* **nur die finale URL** auf **STDOUT**
+* **all logs** and status messages go to **STDERR**
+* **only the final URL** goes to **STDOUT**
 
-Damit funktioniert:
+This means:
 
 ```bash
-sudo uv run dvm backup -v mein_volume > backup_url.txt
+sudo uv run dvm backup -v my_volume > backup_url.txt
 ```
 
-* Terminal: du siehst alle Logs (weil STDERR)
-* `backup_url.txt`: enthält **nur** die URL, z. B.
+* In the terminal you see all logs (because STDERR)
+* `backup_url.txt` contains **only** the URL, e.g.
 
 ```text
 https://transfer.sh/AbCdEf/docker-volumes.tar
 ```
 
-Wenn du zusätzlich die Logs in eine Datei packen willst:
+If you also want logs in a file:
 
 ```bash
-sudo uv run dvm backup -v mein_volume 1>backup_url.txt 2>backup.log
+sudo uv run dvm backup -v my_volume 1>backup_url.txt 2>backup.log
 ```
 
 ---
 
 ### 4. Restore
 
-Auf dem Zielsystem:
+On the target system:
 
-1. (Optional) `dvm config` ausführen, um `docker_root` zu setzen – oder Default verwenden.
+1. (Optional) run `dvm config` to set `docker_root` – or use the default.
 
-2. Docker anhalten:
+2. Stop Docker:
 
    ```bash
    sudo systemctl stop docker
-   # oder service docker stop
+   # or: service docker stop
    ```
 
-3. Restore ausführen:
+3. Run restore:
 
    ```bash
    sudo uv run dvm restore "$(cat backup_url.txt)"
    ```
 
-   oder direkt mit URL:
+   or directly with the URL:
 
    ```bash
    sudo uv run dvm restore "https://transfer.sh/AbCdEf/docker-volumes.tar"
@@ -309,88 +314,88 @@ Auf dem Zielsystem:
 
 `restore`:
 
-* lädt die Datei via HTTP GET
-* speichert sie temporär
-* entpackt mit:
+* downloads the file via HTTP GET
+* stores it in a temp location
+* extracts it with:
 
   ```bash
-  tar --xattrs --acls --numeric-owner -C <docker_root>/volumes -xpf <archiv>
+  tar --xattrs --acls --numeric-owner -C <docker_root>/volumes -xpf <archive>
   ```
 
-4. Docker wieder starten:
+4. Start Docker again:
 
    ```bash
    sudo systemctl start docker
    ```
 
-5. Deine Stacks/Container mit denselben Volume-Namen wie zuvor starten:
+5. Start your stacks/containers with the same volume names as before:
 
    ```bash
    docker compose up -d
-   # oder entsprechende docker run Kommandos
+   # or the corresponding docker run commands
    ```
 
 ---
 
-## Wie dvm intern arbeitet
+## How dvm works internally
 
 * **Config**
 
-  * `~/.dvm/config.toml`, gelesen mit `tomllib` (stdlib ab Python 3.11)
-  * Fallback auf Defaults, falls Datei fehlt oder defekt
-* **Backup-Flow**
+  * `~/.dvm/config.toml`, read with `tomllib` (stdlib since Python 3.11)
+  * falls back to defaults if the file is missing or broken
+* **Backup flow**
 
-  1. Root-Check via `os.geteuid()`
-  2. Config + CLI-Overrides zusammenführen
-  3. Volumes bestimmen (entweder explizit oder via `docker volume ls`)
-  4. Archiv bauen (`tar --xattrs --acls --numeric-owner`)
-  5. Upload zu `endpoint/name` per HTTP `PUT`
-  6. URL auf STDOUT zurückgeben
-* **Restore-Flow**
+  1. Root check via `os.geteuid()`
+  2. Merge config + CLI overrides
+  3. Determine volumes (either explicit or via `docker volume ls`)
+  4. Create archive (`tar --xattrs --acls --numeric-owner`)
+  5. Upload to `endpoint/name` via HTTP `PUT`
+  6. Return URL on STDOUT
+* **Restore flow**
 
-  1. Root-Check
+  1. Root check
   2. Config + optional `--docker-root`
   3. Download via HTTP GET
-  4. Entpacken nach `<docker_root>/volumes`
+  4. Extract to `<docker_root>/volumes`
 
-Die CLI selbst ist mit [Click](https://click.palletsprojects.com/) implementiert, einer beliebten Python-Bibliothek für Kommandozeilentools. ([click.palletsprojects.com][4])
-
----
-
-## Best Practices & Hinweise
-
-* **Immer als root (`sudo`) ausführen**, sonst scheitert der Zugriff auf `/var/lib/docker` und die Besitzrechte.
-* **Container während des Backups stoppen**, damit es keine halbgaren Writes in Volumes gibt.
-* **transfer.sh ist kein langfristiger Backup-Speicher**
-
-  * Standardaufbewahrung ~14 Tage für öffentliche Instanz; für eigene Instanzen gelten deine Einstellungen. ([LFCS Zertifizierung eBook][1])
-  * Nutze ggf. `--max-days`, um die Lebensdauer pro Upload anzupassen. ([GitHub][2])
-* **Sensible Daten**:
-
-  * Jede Person mit der URL kann das Archiv herunterladen.
-  * Für hochsensitive Volumes solltest du vor dem Upload zusätzlich verschlüsseln (GPG, age, …). transfer.sh unterstützt zudem optional Passwörter per `X-Encrypt-Password`-Header, was man in zukünftigen Versionen von `dvm` einbauen könnte. ([GitHub][2])
+The CLI itself is implemented with [Click](https://click.palletsprojects.com/), a popular Python library for command line tools. ([click.palletsprojects.com][4])
 
 ---
 
-## Entwicklung
+## Best practices & notes
 
-### Abhängigkeiten installieren
+* **Always run as root (`sudo`)**, otherwise access to `/var/lib/docker` and ownership will fail.
+* **Stop containers during backup** to avoid partially written data in volumes.
+* **transfer.sh is not long-term backup storage**
 
-Im Projektverzeichnis:
+  * Default retention is ~14 days for the public instance; for your own instances your settings apply. ([LFCS Certification eBook][1])
+  * Use `--max-days` if you want to adjust retention per upload. ([GitHub][2])
+* **Sensitive data**:
+
+  * Anyone with the URL can download the archive.
+  * For highly sensitive volumes, you should additionally encrypt the archive before uploading (GPG, age, …). transfer.sh also supports optional passwords via the `X-Encrypt-Password` header, which could be integrated into future versions of `dvm`. ([GitHub][2])
+
+---
+
+## Development
+
+### Install dependencies
+
+In the project directory:
 
 ```bash
 uv sync
 ```
 
-oder direkt:
+or simply:
 
 ```bash
 uv run dvm --help
 ```
 
-### Typprüfung
+### Type checking
 
-`pyproject.toml` enthält `mypy` als Dev-Dependency:
+`pyproject.toml` includes `mypy` as a dev dependency:
 
 ```bash
 uv run mypy main.py
@@ -398,14 +403,14 @@ uv run mypy main.py
 
 ---
 
-## Roadmap / Ideen
+## Roadmap / ideas
 
-* `dvm doctor`: Checkliste (Docker erreichbar, `tar` vorhanden, Rechte ok)
-* Optionale Verschlüsselung (z. B. via `age` oder `gpg`)
-* Unterstützung für:
+* `dvm doctor`: checklist (Docker reachable, `tar` available, permissions OK)
+* Optional encryption (e.g. via `age` or `gpg`)
+* Support for:
 
-  * Bind-Mounts (`/srv/...`) zusätzlich zu Volumes
-  * Andere Transport-Backends (S3, MinIO, SSH)
+  * bind mounts (`/srv/...`) in addition to volumes
+  * other transport backends (S3, MinIO, SSH)
 
 ---
 

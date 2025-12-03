@@ -8,7 +8,7 @@ from typing import Optional, TypedDict, Any, IO
 import urllib.request
 from urllib.error import URLError, HTTPError
 from pathlib import Path
-import tomllib  # stdlib ab Python 3.11
+import tomllib  # stdlib as of Python 3.11
 
 import click
 
@@ -20,7 +20,7 @@ CONFIG_PATH = CONFIG_DIR / "config.toml"
 
 
 # ---------------------------------------------------------------------------
-# Hilfsfunktionen: Rechte, tar, HTTP
+# Helper functions: permissions, tar, HTTP
 # ---------------------------------------------------------------------------
 
 
@@ -46,32 +46,32 @@ def stdout(message: str, **kwargs: Any) -> None:
 
 def ensure_root():
     if os.geteuid() != 0:
-        echo("Dieses Kommando muss als root laufen (sudo ...).", err=True)
+        echo("This command must be run as root (sudo ...).", err=True)
         sys.exit(1)
 
 
 def run_tar_create(tar_path: str, volumes_dir: str, volume_names: list[str]) -> None:
     """
-    Erzeugt ein Tar-Archiv mit den angegebenen Volume-Verzeichnissen.
+    Create a tar archive with the given volume directories.
 
-    Struktur im Archiv:
+    Archive structure:
         vol1/...
         vol2/...
 
-    => Restore erfolgt mit -C <volumes_dir>.
+    => Restore is done with -C <volumes_dir>.
     """
     if not os.path.isdir(volumes_dir):
         raise click.ClickException(
-            f"Volumes-Verzeichnis existiert nicht: {volumes_dir}"
+            f"Volumes directory does not exist: {volumes_dir}"
         )
 
-    # Prüfen, ob die Volume-Ordner da sind
+    # Check whether the volume folders exist
     missing = [
         v for v in volume_names if not os.path.isdir(os.path.join(volumes_dir, v))
     ]
     if missing:
         raise click.ClickException(
-            "Folgende Volume-Verzeichnisse fehlen unter "
+            "The following volume directories are missing under "
             f"{volumes_dir}: {', '.join(missing)}"
         )
 
@@ -86,17 +86,17 @@ def run_tar_create(tar_path: str, volumes_dir: str, volume_names: list[str]) -> 
         tar_path,
         *volume_names,
     ]
-    echo(f"Erzeuge Tar-Archiv mit: {' '.join(cmd)}")
+    echo(f"Creating tar archive with: {' '.join(cmd)}")
     subprocess.run(cmd, check=True)
 
 
 def run_tar_extract(tar_path: str, volumes_dir: str) -> None:
     """
-    Entpackt ein Tar-Archiv in das Docker-Volumes-Verzeichnis.
+    Extract a tar archive into the Docker volumes directory.
     """
     if not os.path.isdir(volumes_dir):
         raise click.ClickException(
-            f"Volumes-Verzeichnis existiert nicht: {volumes_dir}"
+            f"Volumes directory does not exist: {volumes_dir}"
         )
 
     cmd = [
@@ -109,7 +109,7 @@ def run_tar_extract(tar_path: str, volumes_dir: str) -> None:
         "-xpf",
         tar_path,
     ]
-    echo(f"Entpacke Tar-Archiv mit: {' '.join(cmd)}")
+    echo(f"Extracting tar archive with: {' '.join(cmd)}")
     subprocess.run(cmd, check=True)
 
 
@@ -120,9 +120,9 @@ def upload_to_transfersh(
     max_days: int | None = None,
 ) -> str:
     """
-    Lädt file_path per HTTP PUT zu einem transfer.sh-kompatiblen Endpoint hoch.
+    Uploads file_path via HTTP PUT to a transfer.sh-compatible endpoint.
 
-    Entspricht in etwa:
+    Roughly equivalent to:
         curl --upload-file file_path https://transfer.sh/name
     """
     if name is None:
@@ -131,11 +131,11 @@ def upload_to_transfersh(
     base = endpoint.rstrip("/")
     url = f"{base}/{name}"
 
-    echo(f"Lade Archiv nach {url} hoch ...")
+    echo(f"Uploading archive to {url} ...")
 
     req = urllib.request.Request(url, method="PUT")
     if max_days is not None:
-        # transfer.sh unterstützt z.B. Max-Days als Header (je nach Implementation)
+        # transfer.sh supports e.g. Max-Days as header (depending on implementation)
         req.add_header("Max-Days", str(max_days))
 
     with open(file_path, "rb") as f:
@@ -144,21 +144,21 @@ def upload_to_transfersh(
                 body = resp.read().decode().strip()
         except HTTPError as e:
             raise click.ClickException(
-                f"Upload fehlgeschlagen: HTTP {e.code} - {e.reason}"
+                f"Upload failed: HTTP {e.code} - {e.reason}"
             )
         except URLError as e:
-            raise click.ClickException(f"Upload fehlgeschlagen: {e.reason}")
+            raise click.ClickException(f"Upload failed: {e.reason}")
 
-    echo("Upload fertig.")
-    echo(f"Antwort: {body}")
+    echo("Upload complete.")
+    echo(f"Response: {body}")
     return str(body)
 
 
 def download_file(url: str, dest_path: str) -> None:
     """
-    Lädt eine Datei per HTTP GET herunter.
+    Download a file via HTTP GET.
     """
-    echo(f"Lade {url} herunter ...")
+    echo(f"Downloading {url} ...")
     try:
         with urllib.request.urlopen(url) as resp, open(dest_path, "wb") as out:
             while True:
@@ -168,15 +168,15 @@ def download_file(url: str, dest_path: str) -> None:
                 out.write(chunk)
     except HTTPError as e:
         raise click.ClickException(
-            f"Download fehlgeschlagen: HTTP {e.code} - {e.reason}"
+            f"Download failed: HTTP {e.code} - {e.reason}"
         )
     except URLError as e:
-        raise click.ClickException(f"Download fehlgeschlagen: {e.reason}")
-    echo(f"Download gespeichert unter: {dest_path}")
+        raise click.ClickException(f"Download failed: {e.reason}")
+    echo(f"Download saved to: {dest_path}")
 
 
 # ---------------------------------------------------------------------------
-# Config-Handling (~/.dvm/config.toml)
+# Config handling (~/.dvm/config.toml)
 # ---------------------------------------------------------------------------
 
 
@@ -187,9 +187,9 @@ class Config(TypedDict):
 
 def load_config() -> Config:
     """
-    Lädt die Konfiguration aus ~/.dvm/config.toml.
+    Load configuration from ~/.dvm/config.toml.
 
-    Struktur der Datei (einfach gehalten):
+    File structure (kept simple):
 
         [settings]
         docker_root = "/var/lib/docker"
@@ -208,7 +208,7 @@ def load_config() -> Config:
             data = tomllib.load(f)
     except Exception as e:
         echo(
-            f"Warnung: Konnte Konfiguration nicht lesen ({CONFIG_PATH}): {e}",
+            f"Warning: Could not read configuration ({CONFIG_PATH}): {e}",
             err=True,
         )
         return cfg
@@ -227,12 +227,12 @@ def load_config() -> Config:
 
 def save_config(cfg: Config) -> None:
     """
-    Speichert Konfiguration nach ~/.dvm/config.toml (einfaches TOML-Write).
+    Save configuration to ~/.dvm/config.toml (simple TOML write).
     """
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
     content_lines = [
-        "# Konfiguration für dvm",
+        "# Configuration for dvm",
         "[settings]",
         f'docker_root = "{cfg["docker_root"]}"',
         f'endpoint = "{cfg["endpoint"]}"',
@@ -249,21 +249,21 @@ def save_config(cfg: Config) -> None:
 
 @click.group()
 def cli():
-    """Kleine CLI zum Migrieren von Docker-Volumes via transfer.sh."""
+    """Small CLI to migrate Docker volumes via transfer.sh."""
     pass
 
 
 @cli.command()
 def show_config():
     """
-    Aktuelle Konfiguration anzeigen (inkl. Defaults, falls keine Datei existiert).
+    Show current configuration (including defaults if no file exists).
     """
     cfg = load_config()
-    echo(f"Konfigurationsdatei: {CONFIG_PATH}")
+    echo(f"Configuration file: {CONFIG_PATH}")
     if CONFIG_PATH.exists():
-        echo("Status: Datei gefunden ✅")
+        echo("Status: File found ✅")
     else:
-        echo("Status: Datei existiert noch nicht (Defaults werden verwendet)")
+        echo("Status: File does not exist yet (defaults are used)")
 
     echo("")
     echo(f"Docker Root : {cfg['docker_root']}")
@@ -273,32 +273,32 @@ def show_config():
 @cli.command(name="config")
 def config_cmd():
     """
-    Interaktiver Wizard zum Setzen der Konfiguration (~/.dvm/config.toml).
+    Interactive wizard to set configuration (~/.dvm/config.toml).
     """
-    echo(f"Konfigurations-Wizard für dvm")
-    echo(f"Datei: {CONFIG_PATH}")
-    echo("Bestehende Werte werden als Default verwendet.\n")
+    echo("Configuration wizard for dvm")
+    echo(f"File: {CONFIG_PATH}")
+    echo("Existing values are used as defaults.\n")
 
     current = load_config()
 
     docker_root = click.prompt(
-        "Docker Root-Verzeichnis (enthält 'volumes/')",
+        "Docker root directory (contains 'volumes/')",
         default=current["docker_root"],
         show_default=True,
     )
 
     endpoint = click.prompt(
-        "transfer.sh Endpoint",
+        "transfer.sh endpoint",
         default=current["endpoint"],
         show_default=True,
     )
 
     save_config(Config(docker_root=docker_root, endpoint=endpoint))
 
-    echo("\nKonfiguration gespeichert ✅")
+    echo("\nConfiguration saved ✅")
     echo(f"Docker Root : {docker_root}")
     echo(f"Endpoint    : {endpoint}")
-    echo(f"\nDatei liegt unter: {CONFIG_PATH}")
+    echo(f"\nFile located at: {CONFIG_PATH}")
 
 
 @cli.command()
@@ -307,26 +307,26 @@ def config_cmd():
     "--volume",
     "volumes",
     multiple=True,
-    help="Name eines Docker-Volumes (mehrfach angeben möglich).",
+    help="Name of a Docker volume (can be specified multiple times).",
 )
 @click.option(
     "--all-volumes",
     "-a",
     is_flag=True,
-    help="Alle Docker-Volumes sichern (liest Namen aus 'docker volume ls').",
+    help="Backup all Docker volumes (reads names from 'docker volume ls').",
 )
 @click.option(
     "--docker-root",
     "--dr",
     default=None,
-    help="Docker Root-Verzeichnis (override Konfiguration).",
+    help="Docker root directory (override configuration).",
     show_default=False,
 )
 @click.option(
     "--endpoint",
     "-e",
     default=None,
-    help="transfer.sh-kompatibler Endpoint (override Konfiguration).",
+    help="transfer.sh-compatible endpoint (override configuration).",
     show_default=False,
 )
 @click.option(
@@ -335,13 +335,13 @@ def config_cmd():
     "--output",
     "-o",
     default=None,
-    help="Dateiname für das Archiv auf transfer.sh (z.B. docker-volumes.tar).",
+    help="Filename for the archive on transfer.sh (e.g. docker-volumes.tar).",
 )
 @click.option(
     "--max-days",
     default=None,
     type=int,
-    help="Optional: Ablaufzeit in Tagen (falls vom Endpoint unterstützt).",
+    help="Optional: Expiration time in days (if supported by the endpoint).",
 )
 def backup(
     volumes: str | list[str],
@@ -352,11 +352,11 @@ def backup(
     max_days: Optional[int],
 ) -> None:
     """
-    Volumes packen und nach transfer.sh hochladen.
+    Pack volumes and upload them to transfer.sh.
     """
     ensure_root()
 
-    # Konfiguration laden und CLI-Argumente darüberlegen
+    # Load configuration and override with CLI arguments
     cfg = load_config()
     docker_root = docker_root or cfg["docker_root"]
     endpoint = endpoint or cfg["endpoint"]
@@ -376,21 +376,21 @@ def backup(
             )
         except subprocess.CalledProcessError as e:
             raise click.ClickException(
-                f"Fehler bei 'docker volume ls': {e.stderr.strip()}"
+                f"Error running 'docker volume ls': {e.stderr.strip()}"
             )
 
         names = [line.strip() for line in result.stdout.splitlines() if line.strip()]
         if not names:
-            raise click.ClickException("Es wurden keine Docker-Volumes gefunden.")
+            raise click.ClickException("No Docker volumes were found.")
         volume_names = names
 
     if not volume_names:
         raise click.ClickException(
-            "Keine Volumes angegeben. Nutze --volume ... oder --all-volumes."
+            "No volumes specified. Use --volume ... or --all-volumes."
         )
 
-    echo(f"Sichere Volumes: {', '.join(volume_names)}")
-    echo(f"Verwende Volumes-Verzeichnis: {volumes_dir}")
+    echo(f"Backing up volumes: {', '.join(volume_names)}")
+    echo(f"Using volumes directory: {volumes_dir}")
     echo(f"Endpoint: {endpoint}")
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -401,8 +401,8 @@ def backup(
         archive_name = name or "docker-volumes.tar"
         url = upload_to_transfersh(tar_path, endpoint, archive_name, max_days=max_days)
 
-        echo("\nFERTIG ✅")
-        echo("Nutze folgenden Link auf dem Zielsystem für 'restore':")
+        echo("\nDONE ✅")
+        echo("Use the following link on the target system for 'restore':")
         stdout(url)
 
 
@@ -411,7 +411,7 @@ def backup(
 @click.option(
     "--docker-root",
     default=None,
-    help="Docker Root-Verzeichnis (override Konfiguration).",
+    help="Docker root directory (override configuration).",
     show_default=False,
 )
 @click.option(
@@ -419,19 +419,19 @@ def backup(
     "-r",
     "replacements",
     multiple=True,
-    help="String-Ersetzung für Volume-Namen, z. B. 'alt=neu'. Mehrfach möglich.",
+    help="String replacement for volume names, e.g. 'old=new'. Can be specified multiple times.",
 )
 @click.option(
     "--force",
     "-f",
     is_flag=True,
-    help="Vorhandene Volume-Verzeichnisse überschreiben ohne Nachfrage.",
+    help="Overwrite existing volume directories without asking.",
 )
-def restore(url: str, docker_root: Optional[str], replacements: str|list[str]) -> None:
+def restore(url: str, docker_root: Optional[str], replacements: str | list[str]) -> None:
     """
-    Tar-Archiv von transfer.sh herunterladen und Volumes wiederherstellen.
+    Download tar archive from transfer.sh and restore volumes.
 
-    URL: Download-Link von transfer.sh
+    URL: Download link from transfer.sh
     """
     ensure_root()
 
@@ -442,20 +442,20 @@ def restore(url: str, docker_root: Optional[str], replacements: str|list[str]) -
     volumes_dir = os.path.join(docker_root, "volumes")
     if not os.path.isdir(volumes_dir):
         raise click.ClickException(
-            f"Volumes-Verzeichnis existiert nicht: {volumes_dir}"
+            f"Volumes directory does not exist: {volumes_dir}"
         )
 
-    # Replacements parsen: "alt=neu"
+    # Parse replacements: "old=new"
     replace_pairs: list[tuple[str, str]] = []
     for spec in list(replacements):
         if "=" not in spec:
             raise click.ClickException(
-                f"Ungültiges --replace-Argument '{spec}', erwartet Form 'alt=neu'."
+                f"Invalid --replace argument '{spec}', expected format 'old=new'."
             )
         old, new = spec.split("=", 1)
         if not old:
             raise click.ClickException(
-                f"Ungültiges --replace-Argument '{spec}', linker Teil darf nicht leer sein."
+                f"Invalid --replace argument '{spec}', left side must not be empty."
             )
         replace_pairs.append((old, new))
 
@@ -485,22 +485,22 @@ def restore(url: str, docker_root: Optional[str], replacements: str|list[str]) -
 
                 if os.path.exists(dst):
                     echo(
-                        f"Warnung: Ziel-Volume-Verzeichnis existiert bereits: {dst}",
+                        f"Warning: Target volume directory already exists: {dst}",
                     )
-                    if not click.confirm("Überschreiben?", default=False):
-                        echo(f"Überspringe Volume '{name}'.")
+                    if not click.confirm("Overwrite?", default=False):
+                        echo(f"Skipping volume '{name}'.")
                         continue
-                    echo(f"Überschreibe vorhandenes Volume-Verzeichnis '{dst}'.")
+                    echo(f"Overwriting existing volume directory '{dst}'.")
 
                 echo(
-                    f"Volume-Verzeichnis '{name}' -> '{new_name}'",
+                    f"Volume directory '{name}' -> '{new_name}'",
                 )
                 shutil.move(src, dst)
 
-        echo("\nFERTIG ✅")
+        echo("\nDONE ✅")
         echo(
-            f"Volumes wurden unter {volumes_dir} wiederhergestellt.\n"
-            "Docker neu starten und Container mit den passenden Volume-Namen wie konfiguriert starten.",
+            f"Volumes have been restored under {volumes_dir}.\n"
+            "Restart Docker and start containers with the corresponding volume names as configured.",
         )
 
 

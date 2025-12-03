@@ -1,7 +1,7 @@
 [project]
 name = "dvm"
-version = "0.1.0"
-description = "CLI zum Migrieren von Docker-Volumes via transfer.sh"
+version = "0.2.0"
+description = "dvm is a small Python CLI that lets you back up Docker volumes including permissions & metadata, upload them to a configurable transfer.sh-compatible endpoint, and restore them on another host."
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
